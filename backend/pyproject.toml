@@ -14,12 +14,9 @@ dependencies = [
 ]
 
 
-[tool.setuptools]
-packages = ["audio_analyzer", "main"] 
-
-[tool.setuptools.package-data]
-"*" = ["*.txt", "*.md"]
-
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
