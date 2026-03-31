@@ -14,9 +14,7 @@ dependencies = [
 ]
 
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["*"]
+
 
 [build-system]
 requires = ["setuptools>=61.0"]
