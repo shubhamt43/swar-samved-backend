@@ -12,7 +12,7 @@ app = FastAPI(title="AI Music Tutor Backend")
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://swar-samved.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
