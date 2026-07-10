@@ -89,16 +89,22 @@ def compare_audio(
         test_rhythm = test_analysis["rhythm"]
         ref_rhythm = ref_analysis["rhythm"]
         
-        # Calculate rhythm accuracy
+        # Calculate rhythm accuracy (based on tempo and regularity)
         ref_tempo = ref_rhythm.get("tempo_estimate", 0)
         test_tempo = test_rhythm.get("tempo_estimate", 0)
         
         if ref_tempo > 0:
             tempo_accuracy = min(1.0, test_tempo / ref_tempo) * 100
+            # Agar test_tempo reference se zyada fast hai, toh logic reverse karein
+            if test_tempo > ref_tempo:
+                tempo_accuracy = max(0, (ref_tempo / test_tempo) * 100)
         else:
             tempo_accuracy = 0
         
-        rhythm_accuracy = (test_rhythm.get("onset_regularity", 0) * 100)
+        regularity_score = test_rhythm.get("onset_regularity", 0) * 100
+        
+        # ⚠️ CHANGE: Rhythm accuracy ko tempo aur regularity ka mix banayein
+        rhythm_accuracy = (tempo_accuracy + regularity_score) / 2
         
         # Compile comparison
         comparison = {
