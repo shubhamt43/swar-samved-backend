@@ -111,20 +111,21 @@ class AudioAnalyzer:
         if isinstance(tempo, np.ndarray):
             tempo = tempo[0]
         
+        # Calculate regularity (consistency of timing)
         if len(onset_times) > 1:
             intervals = np.diff(onset_times)
-            regularity = 1.0 - (np.std(intervals) / (np.mean(intervals) + 1e-6))
-            regularity = max(0, min(1, regularity))
+            # ⚠️ CHANGE: Harsh subtraction ki jagah Exponential Decay (Soft scaling) use karein
+            cv = np.std(intervals) / (np.mean(intervals) + 1e-6)
+            regularity = float(np.exp(-cv)) # Isse score kabhi direct 0 nahi hoga
         else:
-            regularity = 0
-        
+            regularity = 0.0
+            
         return {
             "onset_times": onset_times.tolist(),
             "onset_count": int(len(onset_frames)),
             "tempo_estimate": float(tempo),
-            "onset_regularity": float(regularity)
+            "onset_regularity": regularity
         }
-
     # calculate_pitch_accuracy bilkul theek hai, usme change ki zaroorat nahi
     def calculate_pitch_accuracy(self, reference_audio: np.ndarray, test_audio: np.ndarray) -> Dict:
         ref_f0, ref_times = self.extract_pitch(reference_audio)
@@ -143,12 +144,13 @@ class AudioAnalyzer:
         ref_mean_pitch = np.mean(ref_voiced)
         test_mean_pitch = np.mean(test_voiced)
         
-        if ref_mean_pitch > 0:
+       if ref_mean_pitch > 0:
             cents_error = 1200 * np.log2(test_mean_pitch / ref_mean_pitch)
         else:
             cents_error = 0
         
-        max_error = 100 
+        # ⚠️ CHANGE: Tolerance ko 100 (1 semitone) se badha kar 600 (half-octave) kar dein
+        max_error = 600  
         pitch_accuracy = max(0, 1.0 - abs(cents_error) / max_error)
         
         ref_range = np.max(ref_voiced) - np.min(ref_voiced)
