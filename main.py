@@ -4,7 +4,7 @@ os.environ["NUMBA_NUM_THREADS"] = "1"
 os.environ["NUMBA_CACHE_DIR"] = "/tmp"
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
-import gc # Garbage collection ke liye add karein
+import gc # Garbage collection ke liye
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -34,16 +34,17 @@ class ComparisonResponse(BaseModel):
     success: bool
 
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "AI Music Tutor"}
 
+# ⚠️ Yahan se 'async' hata diya gaya hai
 @app.post("/analyze")
-async def analyze_audio(file: UploadFile = File(...)):
+def analyze_audio(file: UploadFile = File(...)):
     """Analyze uploaded audio file and return pitch, spectrogram, and rhythm metrics"""
     try:
-        # Read audio file
-        audio_bytes = await file.read()
+        # ⚠️ 'await' hatakar '.file.read()' use kiya hai
+        audio_bytes = file.file.read()
         audio, sr = analyzer.load_audio(audio_bytes)
         
         # Perform analysis
@@ -62,56 +63,33 @@ async def analyze_audio(file: UploadFile = File(...)):
             "error": str(e)
         }, status_code=400)
 
-# @app.post("/compare")
-# async def compare_audio(
-#     test_file: UploadFile = File(..., description="User's recorded audio"),
-#     reference_file: UploadFile = File(..., description="Reference audio to compare against")
-# ):
-#     """Compare test audio with reference audio and return feedback"""
-#     try:
-#         # Read both files
-#         test_bytes = await test_file.read()
-#         ref_bytes = await reference_file.read()
-        
-#         # Load audio
-#         test_audio, test_sr = analyzer.load_audio(test_bytes)
-#         ref_audio, ref_sr = analyzer.load_audio(ref_bytes)
-        
-#         # Analyze both
-#         test_analysis = analyzer.analyze_audio(test_audio)
-#         ref_analysis = analyzer.analyze_audio(ref_audio)
+# ⚠️ Yahan se bhi 'async' hata diya gaya hai thread blocking rokne ke liye
 @app.post("/compare")
-async def compare_audio(
+def compare_audio(
     test_file: UploadFile = File(..., description="User's recorded audio"),
     reference_file: UploadFile = File(..., description="Reference audio to compare against")
 ):
     try:
-        test_bytes = await test_file.read()
-        ref_bytes = await reference_file.read()
+        # ⚠️ '.file.read()' use kiya hai
+        test_bytes = test_file.file.read()
+        ref_bytes = reference_file.file.read()
         
-        # 1. Sirf test audio load aur analyze karein
+        # Dono audios ek saath load karein
         test_audio, test_sr = analyzer.load_audio(test_bytes)
-        test_analysis = analyzer.analyze_audio(test_audio)
-        
-        # Memory se test_audio turant delete karein
-        del test_audio
-        del test_bytes
-        gc.collect() 
-        
-        # 2. Uske baad reference audio load aur analyze karein
         ref_audio, ref_sr = analyzer.load_audio(ref_bytes)
+        
+        # Analyze both
+        test_analysis = analyzer.analyze_audio(test_audio)
         ref_analysis = analyzer.analyze_audio(ref_audio)
         
-        # (Baaki ka comparison code yahan waise hi rahega jaisa pehle tha...)
-        
-        # Compare pitch
+        # Compare pitch (Ab variable delete nahi hua hai, toh yeh safely chalega)
         pitch_comparison = analyzer.calculate_pitch_accuracy(ref_audio, test_audio)
         
         # Compare rhythm
         test_rhythm = test_analysis["rhythm"]
         ref_rhythm = ref_analysis["rhythm"]
         
-        # Calculate rhythm accuracy (based on tempo and regularity)
+        # Calculate rhythm accuracy
         ref_tempo = ref_rhythm.get("tempo_estimate", 0)
         test_tempo = test_rhythm.get("tempo_estimate", 0)
         
@@ -140,6 +118,10 @@ async def compare_audio(
             )
         }
         
+        # 🧹 Memory cleanup sabse last mein kiya hai taaki koi error na aaye
+        del test_audio, ref_audio, test_bytes, ref_bytes
+        gc.collect() 
+        
         return JSONResponse({
             "success": True,
             "test_analysis": test_analysis,
@@ -155,21 +137,21 @@ async def compare_audio(
             "error": str(e)
         }, status_code=400)
 
+# ⚠️ Yahan se bhi 'async' hata diya gaya hai
 @app.post("/analyze-simple")
-async def analyze_simple(file: UploadFile = File(...)):
+def analyze_simple(file: UploadFile = File(...)):
     """Simple analysis endpoint that returns minimal data for faster response"""
     try:
-        audio_bytes = await file.read()
+        audio_bytes = file.file.read()
         audio, sr = analyzer.load_audio(audio_bytes)
         
         # Quick analysis
         f0, times = analyzer.extract_pitch(audio)
         S_db, freqs, spec_times = analyzer.extract_spectrogram(audio)
         
-        # Only return essential data
         return JSONResponse({
             "success": True,
-            "pitch": f0[:500].tolist() if len(f0) > 0 else [],  # Limit data
+            "pitch": f0[:500].tolist() if len(f0) > 0 else [],  
             "times": times[:500].tolist() if len(times) > 0 else [],
             "spectrogram": S_db[:, :500].tolist() if S_db.shape[1] > 0 else [],
             "frequencies": freqs.tolist(),
@@ -182,7 +164,6 @@ async def analyze_simple(file: UploadFile = File(...)):
         }, status_code=400)
 
 if __name__ == "__main__":
-    import os
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
