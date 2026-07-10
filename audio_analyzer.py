@@ -43,17 +43,39 @@ class AudioAnalyzer:
         except Exception as e:
             raise ValueError(f"Failed to load audio: {str(e)}")
 
+    # def extract_pitch(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    #     # Har jagah 8000 hata kar self.sr kar diya
+    #     f0, voiced_flag, voiced_probs = librosa.pyin(
+    #         audio,
+    #         fmin=self.fmin,
+    #         fmax=self.fmax,
+    #         sr=self.sr,
+    #         hop_length=self.hop_length
+    #     )
+    #     f0 = np.nan_to_num(f0, nan=0.0)
+    #     times = librosa.frames_to_time(np.arange(len(f0)), sr=self.sr, hop_length=self.hop_length)
+    #     return f0, times
     def extract_pitch(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        # Har jagah 8000 hata kar self.sr kar diya
-        f0, voiced_flag, voiced_probs = librosa.pyin(
-            audio,
+        """
+        Extract pitch contour using YIN algorithm (Faster for Free Cloud limits)
+        Returns: (pitch_values, time_frames)
+        """
+        # PYIN ko hata kar sirf YIN use kar rahe hain
+        # Dhyan dein: YIN sirf f0 return karta hai, voiced_flag nahi
+        f0 = librosa.yin(
+            y=audio,
             fmin=self.fmin,
             fmax=self.fmax,
             sr=self.sr,
             hop_length=self.hop_length
         )
+        
+        # Convert NaN values to 0 (agar koi aaye toh)
         f0 = np.nan_to_num(f0, nan=0.0)
+        
+        # Time frames
         times = librosa.frames_to_time(np.arange(len(f0)), sr=self.sr, hop_length=self.hop_length)
+        
         return f0, times
 
     def extract_spectrogram(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
