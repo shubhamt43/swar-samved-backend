@@ -1,4 +1,10 @@
+import os
+# Yeh 2 lines librosa ke load hone se pehle RAM spike ko rokengi
+os.environ["NUMBA_NUM_THREADS"] = "1"
+os.environ["NUMBA_CACHE_DIR"] = "/tmp"
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
+import gc # Garbage collection ke liye add karein
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -56,24 +62,47 @@ async def analyze_audio(file: UploadFile = File(...)):
             "error": str(e)
         }, status_code=400)
 
+# @app.post("/compare")
+# async def compare_audio(
+#     test_file: UploadFile = File(..., description="User's recorded audio"),
+#     reference_file: UploadFile = File(..., description="Reference audio to compare against")
+# ):
+#     """Compare test audio with reference audio and return feedback"""
+#     try:
+#         # Read both files
+#         test_bytes = await test_file.read()
+#         ref_bytes = await reference_file.read()
+        
+#         # Load audio
+#         test_audio, test_sr = analyzer.load_audio(test_bytes)
+#         ref_audio, ref_sr = analyzer.load_audio(ref_bytes)
+        
+#         # Analyze both
+#         test_analysis = analyzer.analyze_audio(test_audio)
+#         ref_analysis = analyzer.analyze_audio(ref_audio)
 @app.post("/compare")
 async def compare_audio(
     test_file: UploadFile = File(..., description="User's recorded audio"),
     reference_file: UploadFile = File(..., description="Reference audio to compare against")
 ):
-    """Compare test audio with reference audio and return feedback"""
     try:
-        # Read both files
         test_bytes = await test_file.read()
         ref_bytes = await reference_file.read()
         
-        # Load audio
+        # 1. Sirf test audio load aur analyze karein
         test_audio, test_sr = analyzer.load_audio(test_bytes)
-        ref_audio, ref_sr = analyzer.load_audio(ref_bytes)
-        
-        # Analyze both
         test_analysis = analyzer.analyze_audio(test_audio)
+        
+        # Memory se test_audio turant delete karein
+        del test_audio
+        del test_bytes
+        gc.collect() 
+        
+        # 2. Uske baad reference audio load aur analyze karein
+        ref_audio, ref_sr = analyzer.load_audio(ref_bytes)
         ref_analysis = analyzer.analyze_audio(ref_audio)
+        
+        # (Baaki ka comparison code yahan waise hi rahega jaisa pehle tha...)
         
         # Compare pitch
         pitch_comparison = analyzer.calculate_pitch_accuracy(ref_audio, test_audio)
