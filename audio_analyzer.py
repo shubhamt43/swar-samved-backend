@@ -6,11 +6,12 @@ import io
 
 class AudioAnalyzer:
     # 1. Yahan default 8000 set kar diya taaki pooray code mein consistency rahe
-    def __init__(self, sr: int = 8000, hop_length: int = 512):
+    # hop_length 512 se badha kar 2048 kar diya hai
+    def __init__(self, sr: int = 8000, hop_length: int = 2048):
         self.sr = sr
         self.hop_length = hop_length
         self.fmin = 80  
-        self.fmax = 400 
+        self.fmax = 400
 
     def load_audio(self, audio_bytes: bytes) -> Tuple[np.ndarray, int]:
         """Load audio from bytes and return (audio_data, sample_rate)"""
