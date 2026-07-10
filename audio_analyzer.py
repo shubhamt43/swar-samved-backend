@@ -144,7 +144,7 @@ class AudioAnalyzer:
         ref_mean_pitch = np.mean(ref_voiced)
         test_mean_pitch = np.mean(test_voiced)
         
-       if ref_mean_pitch > 0:
+        if ref_mean_pitch > 0:
             cents_error = 1200 * np.log2(test_mean_pitch / ref_mean_pitch)
         else:
             cents_error = 0
